@@ -19,7 +19,6 @@ import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
-import org.jetbrains.kotlin.ir.backend.js.lower.ArrayConstructorTransformer
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.builders.irReturn
 import org.jetbrains.kotlin.ir.declarations.*
@@ -46,10 +45,8 @@ internal class FunctionInlining(val context: Context): IrElementTransformerVoidW
         return irModule.accept(this, data = null)
     }
 
-    private val arrayConstructorTransformer = ArrayConstructorTransformer(context)
-
     override fun visitCall(expression: IrCall): IrExpression {
-        val callSite = arrayConstructorTransformer.transformCall(super.visitCall(expression) as IrCall)
+        val callSite = super.visitCall(expression) as IrCall
 
         if (!callSite.symbol.owner.needsInlining)
             return callSite

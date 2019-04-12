@@ -263,58 +263,26 @@ class ExpressionCodegen(
     override fun visitDelegatingConstructorCall(expression: IrDelegatingConstructorCall, data: BlockInfo): PromisedValue {
         expression.markLineNumber(startOffset = true)
         mv.load(0, OBJECT_TYPE) // HACK
-        return generateCall(expression, null, data)
+        return generateCall(expression, data)
     }
 
     override fun visitCall(expression: IrCall, data: BlockInfo): PromisedValue {
         expression.markLineNumber(startOffset = true)
+        classCodegen.context.irIntrinsics.getIntrinsic(expression.descriptor.original)
+            ?.invoke(expression, this, data)?.let { return it.coerce(expression.asmType) }
         if (expression.descriptor is ConstructorDescriptor) {
-            return generateNewCall(expression, data)
-        }
-        return generateCall(expression, expression.superQualifier, data)
-    }
-
-    private fun generateNewCall(expression: IrCall, data: BlockInfo): PromisedValue {
-        val type = expression.asmType
-        if (type.sort == Type.ARRAY) {
-            return generateNewArray(expression, data)
-        }
-
-        mv.anew(expression.asmType)
-        mv.dup()
-        generateCall(expression, expression.superQualifier, data)
-        return expression.onStack
-    }
-
-    private fun generateNewArray(expression: IrCall, data: BlockInfo): PromisedValue {
-        val args = expression.descriptor.valueParameters
-        assert(args.size == 1 || args.size == 2) { "Unknown constructor called: " + args.size + " arguments" }
-
-        if (args.size == 1) {
-            // TODO move to the intrinsic
-            expression.getValueArgument(0)!!.accept(this, data).coerce(Type.INT_TYPE).materialize()
-            newArrayInstruction(expression.type.toKotlinType())
+            mv.anew(expression.asmType)
+            mv.dup()
+            generateCall(expression, data).discard()
             return expression.onStack
         }
-
-        return generateCall(expression, expression.superQualifier, data)
+        return generateCall(expression, data)
     }
 
-    private fun generateCall(expression: IrFunctionAccessExpression, superQualifier: ClassDescriptor?, data: BlockInfo): PromisedValue {
-        classCodegen.context.irIntrinsics.getIntrinsic(expression.descriptor.original as CallableMemberDescriptor)
-            ?.invoke(expression, this, data)?.let { return it.coerce(expression.asmType) }
-        val isSuperCall = superQualifier != null
+    private fun generateCall(expression: IrFunctionAccessExpression, data: BlockInfo): PromisedValue {
+        val isSuperCall = (expression as? IrCall)?.superQualifier != null
         val callable = resolveToCallable(expression, isSuperCall)
-        return generateCall(expression, callable, data, isSuperCall)
-    }
-
-    fun generateCall(
-        expression: IrMemberAccessExpression,
-        callable: Callable,
-        data: BlockInfo,
-        isSuperCall: Boolean = false
-    ): PromisedValue {
-        val callGenerator = getOrCreateCallGenerator(expression, expression.descriptor, data)
+        val callGenerator = getOrCreateCallGenerator(expression, data)
 
         val receiver = expression.dispatchReceiver
         receiver?.apply {
@@ -1064,67 +1032,40 @@ class ExpressionCodegen(
         return typeMapper.mapToCallableMethod(descriptor as FunctionDescriptor, isSuper)
     }
 
-    private fun getOrCreateCallGenerator(
-        descriptor: CallableDescriptor,
-        element: IrMemberAccessExpression?,
-        typeParameterMappings: TypeParameterMappings?,
-        isDefaultCompilation: Boolean,
-        data: BlockInfo
-    ): IrCallGenerator {
-        if (element == null) return IrCallGenerator.DefaultCallGenerator
-
-        // We should inline callable containing reified type parameters even if inline is disabled
-        // because they may contain something to reify and straight call will probably fail at runtime
-        val isInline = descriptor.isInlineCall(state)
-
-        if (!isInline) return IrCallGenerator.DefaultCallGenerator
-
-        val original = unwrapInitialSignatureDescriptor(DescriptorUtils.unwrapFakeOverride(descriptor.original as FunctionDescriptor))
-        return if (isDefaultCompilation) {
-            TODO()
-        } else {
-            IrInlineCodegen(this, state, original, typeParameterMappings!!, IrSourceCompilerForInline(state, element, this, data))
+    private fun getOrCreateCallGenerator(element: IrFunctionAccessExpression, data: BlockInfo): IrCallGenerator {
+        if (!element.symbol.owner.isInlineFunctionCall(context)) {
+            return IrCallGenerator.DefaultCallGenerator
         }
-    }
 
-    private fun getOrCreateCallGenerator(
-        memberAccessExpression: IrMemberAccessExpression,
-        descriptor: CallableDescriptor,
-        data: BlockInfo
-    ): IrCallGenerator {
         val typeArguments =
-            if (memberAccessExpression.typeArgumentsCount == 0) {
+            if (element.typeArgumentsCount == 0) {
                 //avoid ambiguity with type constructor type parameters
                 emptyMap()
-            } else (descriptor.propertyIfAccessor as? CallableDescriptor)?.original?.typeParameters?.keysToMap {
-                memberAccessExpression.getTypeArgumentOrDefault(it)
+            } else (element.descriptor.propertyIfAccessor as? CallableDescriptor)?.original?.typeParameters?.keysToMap {
+                element.getTypeArgumentOrDefault(it)
             } ?: emptyMap()
 
         val mappings = TypeParameterMappings()
-        for (entry in typeArguments.entries) {
-            val key = entry.key
-            val type = entry.value
-
-            val isReified = key.isReified || InlineUtil.isArrayConstructorWithLambda(descriptor)
-
+        for ((key, type) in typeArguments.entries) {
             val typeParameterAndReificationArgument = extractReificationArgument(type)
             if (typeParameterAndReificationArgument == null) {
-                val approximatedType = approximateCapturedTypes(entry.value).upper
+                val approximatedType = approximateCapturedTypes(type).upper
                 // type is not generic
                 val signatureWriter = BothSignatureWriter(BothSignatureWriter.Mode.TYPE)
                 val asmType = typeMapper.mapTypeParameter(approximatedType, signatureWriter)
 
                 mappings.addParameterMappingToType(
-                    key.name.identifier, approximatedType, asmType, signatureWriter.toString(), isReified
+                    key.name.identifier, approximatedType, asmType, signatureWriter.toString(), key.isReified
                 )
             } else {
                 mappings.addParameterMappingForFurtherReification(
-                    key.name.identifier, type, typeParameterAndReificationArgument.second, isReified
+                    key.name.identifier, type, typeParameterAndReificationArgument.second, key.isReified
                 )
             }
         }
 
-        return getOrCreateCallGenerator(descriptor, memberAccessExpression, mappings, false, data)
+        val original = unwrapInitialSignatureDescriptor(DescriptorUtils.unwrapFakeOverride(element.descriptor.original))
+        return IrInlineCodegen(this, state, original, mappings, IrSourceCompilerForInline(state, element, this, data))
     }
 
     override fun consumeReifiedOperationMarker(typeParameterDescriptor: TypeParameterDescriptor) {
@@ -1171,7 +1112,3 @@ fun DefaultCallArgs.generateOnStackIfNeeded(callGenerator: IrCallGenerator, isCo
     }
     return toInts.isNotEmpty()
 }
-
-internal fun CallableDescriptor.isInlineCall(state: GenerationState) =
-    (!state.isInlineDisabled || InlineUtil.containsReifiedTypeParameters(this)) &&
-            (InlineUtil.isInline(this) || InlineUtil.isArrayConstructorWithLambda(this))
