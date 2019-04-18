@@ -29,6 +29,11 @@ public class FirResolveTestCaseWithStdlibGenerated extends AbstractFirResolveTes
         KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/fir/resolve/testData/resolve/stdlib"), Pattern.compile("^([^.]+)\\.kt$"), TargetBackend.ANY, true);
     }
 
+    @TestMetadata("components.kt")
+    public void testComponents() throws Exception {
+        runTest("compiler/fir/resolve/testData/resolve/stdlib/components.kt");
+    }
+
     @TestMetadata("concurrent.kt")
     public void testConcurrent() throws Exception {
         runTest("compiler/fir/resolve/testData/resolve/stdlib/concurrent.kt");

@@ -46,6 +46,10 @@ open class FirClassImpl(
 
     override val declarations = mutableListOf<FirDeclaration>()
 
+    fun addDeclaration(declaration: FirDeclaration) {
+        declarations += declaration
+    }
+
     override fun replaceSupertypes(newSupertypes: List<FirTypeRef>): FirRegularClass {
         superTypeRefs.clear()
         superTypeRefs.addAll(newSupertypes)
