@@ -35,6 +35,7 @@ import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.isSubclassOf
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
 fun KotlinType.isFunctionOfAnyKind() = constructor.declarationDescriptor?.getFunctionalClassKind() != null
 
@@ -71,10 +72,11 @@ fun ResolvedCall<*>.hasLastFunctionalParameterWithResult(context: BindingContext
     val lastArgument = valueArguments[lastParameter]?.arguments?.singleOrNull() ?: return false
     if (this is NewResolvedCallImpl<*>) {
         // TODO: looks like hack
-        val lambdaAtom = this.resolvedCallAtom.subResolvedAtoms.firstOrNull { it is ResolvedLambdaAtom } as? ResolvedLambdaAtom ?: return false
-        return lambdaAtom.resultArguments.filterIsInstance<ReceiverKotlinCallArgument>().all {
-            val type = it.receiverValue?.type ?: return@all false
-            predicate(type)
+        resolvedCallAtom.subResolvedAtoms.firstOrNull { it is ResolvedLambdaAtom }.safeAs<ResolvedLambdaAtom>()?.let { lambdaAtom ->
+            return lambdaAtom.resultArguments.filterIsInstance<ReceiverKotlinCallArgument>().all {
+                val type = it.receiverValue?.type ?: return@all false
+                predicate(type)
+            }
         }
     }
 
