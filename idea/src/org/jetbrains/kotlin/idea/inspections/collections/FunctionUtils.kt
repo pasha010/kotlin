@@ -26,7 +26,11 @@ import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.calls.callUtil.getResolvedCall
 import org.jetbrains.kotlin.resolve.calls.callUtil.getType
+import org.jetbrains.kotlin.resolve.calls.model.ReceiverKotlinCallArgument
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
+import org.jetbrains.kotlin.resolve.calls.model.ResolvedLambdaAtom
+import org.jetbrains.kotlin.resolve.calls.tower.NewResolvedCallImpl
+import org.jetbrains.kotlin.resolve.calls.tower.receiverValue
 import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 import org.jetbrains.kotlin.resolve.descriptorUtil.isSubclassOf
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
@@ -65,6 +69,15 @@ fun ResolvedCall<out CallableDescriptor>.isCalling(fqName: FqName): Boolean {
 fun ResolvedCall<*>.hasLastFunctionalParameterWithResult(context: BindingContext, predicate: (KotlinType) -> Boolean): Boolean {
     val lastParameter = resultingDescriptor.valueParameters.lastOrNull() ?: return false
     val lastArgument = valueArguments[lastParameter]?.arguments?.singleOrNull() ?: return false
+    if (this is NewResolvedCallImpl<*>) {
+        // TODO: looks like hack
+        val lambdaAtom = this.resolvedCallAtom.subResolvedAtoms.firstOrNull { it is ResolvedLambdaAtom } as? ResolvedLambdaAtom ?: return false
+        return lambdaAtom.resultArguments.filterIsInstance<ReceiverKotlinCallArgument>().all {
+            val type = it.receiverValue?.type ?: return@all false
+            predicate(type)
+        }
+    }
+
     val functionalType = lastArgument.getArgumentExpression()?.getType(context) ?: return false
     // Both Function & KFunction must pass here
     if (!functionalType.isFunctionOfAnyKind()) return false
