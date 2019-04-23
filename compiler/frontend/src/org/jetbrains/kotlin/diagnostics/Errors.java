@@ -640,11 +640,15 @@ public interface Errors {
 
     DiagnosticFactory0<PsiElement> EXPECTED_FUNCTION_SOURCE_WITH_DEFAULT_ARGUMENTS_NOT_FOUND = DiagnosticFactory0.create(ERROR);
 
-    DiagnosticFactory3<KtNamedDeclaration, MemberDescriptor, ModulePath,
+    DiagnosticFactory3<KtNamedDeclaration, MemberDescriptor, ModuleDescriptor,
             Map<Incompatible, Collection<MemberDescriptor>>> NO_ACTUAL_FOR_EXPECT =
             DiagnosticFactory3.create(ERROR, INCOMPATIBLE_DECLARATION);
     DiagnosticFactory2<KtNamedDeclaration, MemberDescriptor,
             Map<Incompatible, Collection<MemberDescriptor>>> ACTUAL_WITHOUT_EXPECT =
+            DiagnosticFactory2.create(ERROR, INCOMPATIBLE_DECLARATION);
+    DiagnosticFactory2<KtNamedDeclaration, DeclarationDescriptor, Collection<ModuleDescriptor>> AMBIGUOUS_ACTUALS =
+            DiagnosticFactory2.create(ERROR, INCOMPATIBLE_DECLARATION);
+    DiagnosticFactory2<KtNamedDeclaration, DeclarationDescriptor, Collection<ModuleDescriptor>> AMBIGUOUS_EXPECTS =
             DiagnosticFactory2.create(ERROR, INCOMPATIBLE_DECLARATION);
 
     DiagnosticFactory2<KtNamedDeclaration, ClassDescriptor,

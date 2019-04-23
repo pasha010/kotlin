@@ -69,7 +69,7 @@ sealed class CreateActualFix<D : KtNamedDeclaration>(
             val compatibility = d.c
             // For function we allow it, because overloads are possible
             if (compatibility.isNotEmpty() && declaration !is KtFunction) return null
-            val actualModuleDescriptor = d.b.nodes.last()
+            val actualModuleDescriptor = d.b
             val actualModule = (actualModuleDescriptor.getCapability(ModuleInfo.Capability) as? ModuleSourceInfo)?.module ?: return null
             val actualPlatform = actualModuleDescriptor.platform ?: return null
             return when (declaration) {
