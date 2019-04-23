@@ -50,7 +50,6 @@ fun ConstraintStorage.buildAbstractResultingSubstitutor(context: TypeSystemInfer
     }
 
 fun ConstraintStorage.buildResultingSubstitutor(context: TypeSystemInferenceExtensionContext): NewTypeSubstitutor {
-    require(context is ClassicTypeSystemContext) { "Unexpected context: $context" }
     return buildAbstractResultingSubstitutor(context) as NewTypeSubstitutor
 }
 
