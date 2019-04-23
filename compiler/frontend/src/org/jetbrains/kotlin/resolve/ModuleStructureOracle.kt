@@ -11,6 +11,7 @@ interface ModuleStructureOracle {
     // May be faster than `findAllImplementingModules(module).isNotEmpty()`
     fun hasImplementingModules(module: ModuleDescriptor): Boolean
 
+    // TODO(dsavvinov): consider moving to comilation-terminology rather than inventing new "path"-terms
     fun findAllActualizationPaths(module: ModuleDescriptor): List<ModulePath>
 
     fun findAllExpectedByPaths(module: ModuleDescriptor): List<ModulePath>
