@@ -120,7 +120,7 @@ private fun AbstractMultiModuleTest.doSetupProject(rootInfos: List<RootInfo>) {
             else -> {
                 val commonModuleId = ModuleId(name, DefaultBuiltInPlatforms.commonPlatform)
 
-                module.createFacet(platform, implementedModuleName = commonModuleId.ideaModuleName())
+                module.createFacet(platform, implementedModuleNames = listOf(commonModuleId.ideaModuleName()))
                 module.enableMultiPlatform()
 
                 modulesById[commonModuleId]?.let { commonModule ->
