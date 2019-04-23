@@ -77,5 +77,6 @@ object JsPlatformConfigurator : PlatformConfiguratorBase(
         container.useInstance(JsNativeDiagnosticSuppressor)
         container.useInstance(CoroutineCompatibilitySupport.DISABLED)
         container.useInstance(ExpectedActualDeclarationChecker.ActualAnnotationArgumentExtractor.DEFAULT)
+        container.useImpl<ExpectedActualDeclarationChecker>()
     }
 }

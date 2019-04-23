@@ -108,7 +108,6 @@ abstract class PlatformConfiguratorBase(
 
     override fun configureModuleDependentCheckers(container: StorageComponentContainer) {
         container.useImpl<ExperimentalMarkerDeclarationAnnotationChecker>()
-        container.useImpl<ExpectedActualDeclarationChecker>()
     }
 
     fun configureExtensionsAndCheckers(container: StorageComponentContainer) {

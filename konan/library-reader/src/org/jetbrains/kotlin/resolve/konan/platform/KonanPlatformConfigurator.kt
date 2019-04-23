@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.resolve.konan.platform
 
 import org.jetbrains.kotlin.builtins.PlatformToKotlinClassMap
 import org.jetbrains.kotlin.container.StorageComponentContainer
+import org.jetbrains.kotlin.container.useImpl
 import org.jetbrains.kotlin.container.useInstance
 import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.resolve.calls.components.SamConversionTransformer
@@ -37,5 +38,6 @@ object KonanPlatformConfigurator : PlatformConfiguratorBase(
         container.useInstance(TypeSpecificityComparator.NONE)
         container.useInstance(SamConversionTransformer.Empty)
         container.useInstance(ExpectedActualDeclarationChecker.ActualAnnotationArgumentExtractor.DEFAULT)
+        container.useImpl<ExpectedActualDeclarationChecker>()
     }
 }

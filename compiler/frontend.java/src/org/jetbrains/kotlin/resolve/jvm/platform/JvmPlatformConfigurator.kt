@@ -105,5 +105,6 @@ object JvmPlatformConfigurator : PlatformConfiguratorBase(
         container.useImpl<JvmSamConversionTransformer>()
         container.useInstance(FunctionWithBigAritySupport.LANGUAGE_VERSION_DEPENDENT)
         container.useInstance(JavaActualAnnotationArgumentExtractor())
+        container.useImpl<ExpectedActualDeclarationChecker>()
     }
 }
