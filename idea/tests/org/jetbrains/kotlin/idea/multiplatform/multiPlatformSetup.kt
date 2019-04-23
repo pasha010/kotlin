@@ -11,8 +11,8 @@ import com.intellij.openapi.module.StdModuleTypes
 import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.util.text.trimMiddle
 import junit.framework.TestCase
+import org.jetbrains.kotlin.checkers.utils.clearFileFromDiagnosticMarkup
 import org.jetbrains.kotlin.codegen.forTestCompile.ForTestCompileRuntime
 import org.jetbrains.kotlin.idea.framework.CommonLibraryKind
 import org.jetbrains.kotlin.idea.framework.JSLibraryKind
@@ -24,9 +24,6 @@ import org.jetbrains.kotlin.projectModel.*
 import org.jetbrains.kotlin.resolve.*
 import org.jetbrains.kotlin.test.TestJdkKind
 import java.io.File
-import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.memberProperties
 
 // allows to configure a test mpp project
 // testRoot is supposed to contain several directories which contain module sources roots
@@ -43,18 +40,25 @@ fun AbstractMultiModuleTest.setupMppProjectFromTextFile(testRoot: File) {
     val dependeciesTxt = File(testRoot, "dependencies.txt")
     val projectModel = ProjectStructureParser(testRoot).parse(dependeciesTxt.readText())
 
+    check(projectModel.modules.isNotEmpty()) { "No modules were parsed from dependencies.txt" }
+
     doSetup(projectModel)
 }
 
 fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
     val resolveModulesToIdeaModules = projectModel.modules.map { resolveModule ->
         val ideaModule = createModule(resolveModule.name)
-        addRoot(ideaModule, resolveModule.root, false)
+        addRoot(
+            ideaModule,
+            resolveModule.root,
+            isTestRoot = false,
+            transformContainedFiles = { if (it.extension == "kt") clearFileFromDiagnosticMarkup(it) }
+        )
         resolveModule to ideaModule
     }.toMap()
 
     for ((resolveModule, ideaModule) in resolveModulesToIdeaModules.entries) {
-        resolveModule.dependencies.filter { it.kind == ResolveDependency.Kind.DEPENDENCY }.forEach {
+        resolveModule.dependencies.forEach {
             when (val to = it.to) {
                 FullJdk -> ConfigLibraryUtil.configureSdk(module, PluginTestCaseBase.addJdk(testRootDisposable) {
                     PluginTestCaseBase.jdk(TestJdkKind.FULL_JDK)
@@ -71,7 +75,7 @@ fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
         val platform = resolveModule.platform
         ideaModule.createFacet(
             platform,
-            implementedModuleName = resolveModule.dependencies.singleOrNull { it.kind == ResolveDependency.Kind.EXPECTED_BY }?.to?.name
+            implementedModuleNames = resolveModule.dependencies.filter { it.kind == ResolveDependency.Kind.EXPECTED_BY }.map { it.to.name }
         )
         ideaModule.enableMultiPlatform()
     }
