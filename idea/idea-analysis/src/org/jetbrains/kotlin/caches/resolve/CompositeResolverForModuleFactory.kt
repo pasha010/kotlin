@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.analyzer.common.CommonPlatformCompilerServices
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.container.*
 import org.jetbrains.kotlin.context.ModuleContext
-import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.descriptors.PackageFragmentProvider
 import org.jetbrains.kotlin.descriptors.impl.CompositePackageFragmentProvider
@@ -31,11 +30,8 @@ import org.jetbrains.kotlin.load.java.lazy.ModuleClassResolverImpl
 import org.jetbrains.kotlin.load.kotlin.PackagePartProvider
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinderFactory
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.platform.IdePlatformKind
 import org.jetbrains.kotlin.platform.idePlatformKind
-import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.resolve.*
-import org.jetbrains.kotlin.resolve.checkers.DeclarationCheckerContext
 import org.jetbrains.kotlin.resolve.checkers.ExpectedActualDeclarationChecker
 import org.jetbrains.kotlin.resolve.checkers.ExperimentalMarkerDeclarationAnnotationChecker
 import org.jetbrains.kotlin.resolve.jvm.JavaDescriptorResolver
@@ -201,7 +197,7 @@ class CompositeResolverForModuleFactory(
             configureCommonSpecificComponents()
         }
 
-        useClashResolver(HackExpectedActualChecker())
+        useClashResolver(ExpectedActualCheckerClashResolver())
 
         IdeaEnvironment.configure(this)
     }.apply {
@@ -211,13 +207,7 @@ class CompositeResolverForModuleFactory(
     }
 }
 
-
-// XXX: This class is a very-very dirty abuse of PlatformExtenionsClashResovlers, which effectively turns ExpectedActualChecker off.
-// It is needed because ExpectedActualChecker is injected by all platformConfigurators except common, but in IDE we actually have a
-// PlatformExpectedAnnotator instead, so unless we somehow disable ExpectedActualChecker, we'll get duplicate diagnostics.
-// TODO(dsavvinov): remove this hack either by refactoring ExpectedActualChecker (and removing the need in duplicate PlatformExpectedAnnotator),
-//  or by refactoring containers (thus allowing more flexibility in configuration)
-class HackExpectedActualChecker : PlatformExtensionsClashResolver<ExpectedActualDeclarationChecker>(ExpectedActualDeclarationChecker::class.java) {
+class ExpectedActualCheckerClashResolver : PlatformExtensionsClashResolver<ExpectedActualDeclarationChecker>(ExpectedActualDeclarationChecker::class.java) {
     override fun resolveExtensionsClash(extensions: List<ExpectedActualDeclarationChecker>): ExpectedActualDeclarationChecker {
         return extensions.first()
     }
