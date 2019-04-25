@@ -30,8 +30,6 @@ interface IrCallGenerator {
         } else {
             (callableMethod as CallableMethod).genInvokeDefaultInstruction(codegen.mv)
         }
-
-        generateNullCheckOnCallSite(expression.descriptor, codegen.mv, codegen.context.state.bindingContext)
     }
 
     fun beforeValueParametersStart() {

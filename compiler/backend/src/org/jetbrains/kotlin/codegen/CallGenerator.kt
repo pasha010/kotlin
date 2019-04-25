@@ -40,11 +40,7 @@ interface CallGenerator {
                 (callableMethod as CallableMethod).genInvokeDefaultInstruction(codegen.v)
             }
 
-            generateNullCheckOnCallSite(
-                resolvedCall?.run { (candidateDescriptor as? PropertyDescriptor)?.getter ?: candidateDescriptor },
-                codegen.v,
-                codegen.bindingContext
-            )
+            generateNullCheckOnCallSite(resolvedCall, codegen.v, codegen.bindingContext)
         }
 
         override fun processAndPutHiddenParameters(justProcess: Boolean) {

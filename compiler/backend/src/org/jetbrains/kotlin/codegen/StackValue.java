@@ -1690,7 +1690,7 @@ public abstract class StackValue {
                 }
                 else {
                     getter.genInvokeInstruction(v);
-                    generateNullCheckOnCallSite(getterDescriptor, v, codegen.getBindingContext());
+                    generateNullCheckOnCallSite(resolvedCall, v, codegen.getBindingContext());
                 }
 
                 Type typeOfValueOnStack = getter.getReturnType();

@@ -663,11 +663,19 @@ private fun generateLambdaForRunSuspend(
     return lambdaBuilder.thisName
 }
 
-fun generateNullCheckOnCallSite(descriptor: CallableDescriptor?, v: InstructionAdapter, bindingContext: BindingContext) {
-    bindingContext.get(
-        JvmBindingContextSlices.RUNTIME_NOT_NULL_ASSERTION_ON_CALL_SITE,
-        descriptor?.original ?: return
-    ) ?: return
+fun generateNullCheckOnCallSite(resolvedCall: ResolvedCall<*>?, v: InstructionAdapter, bindingContext: BindingContext) {
+    val descriptor = resolvedCall?.run { (candidateDescriptor as? PropertyDescriptor)?.getter ?: candidateDescriptor } ?: return
+    val assertionInfoOnDelegates = bindingContext.get(
+        JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_DELEGATES,
+        descriptor.original
+    )
+    val assertionInfoOnGenericCall = bindingContext.get(
+        JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_GENERIC_CALL,
+        resolvedCall.call.callElement
+    )
+
+    if (assertionInfoOnDelegates?.needNotNullAssertion != true && assertionInfoOnGenericCall?.needNotNullAssertion != true)
+        return
 
     val notNullLabel = Label()
     v.run {

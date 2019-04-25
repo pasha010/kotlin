@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.resolve.calls.checkers.CallCheckerContext
 import org.jetbrains.kotlin.resolve.calls.context.ResolutionContext
 import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.isNullableUnderlyingType
+import org.jetbrains.kotlin.resolve.scopes.LexicalScopeKind
 import org.jetbrains.kotlin.resolve.scopes.receivers.ExpressionReceiver
 import org.jetbrains.kotlin.resolve.scopes.receivers.ReceiverValue
 import org.jetbrains.kotlin.types.*
@@ -78,7 +79,7 @@ class RuntimeAssertionInfo(val needNotNullAssertion: Boolean, val message: Strin
     }
 }
 
-private val KtExpression.textForRuntimeAssertionInfo
+private val KtElement.textForRuntimeAssertionInfo
     get() = StringUtil.trimMiddle(text, 50)
 
 class RuntimeAssertionsDataFlowExtras(
@@ -126,11 +127,21 @@ object RuntimeAssertionsOnGenericTypeReturningFunctionsCallChecker : CallChecker
             unsubstitutedReturnType.isNullable() &&
             !inferredReturnType.isNullable()
         ) {
-            context.trace.record(
-                JvmBindingContextSlices.RUNTIME_NOT_NULL_ASSERTION_ON_CALL_SITE,
-                ((candidateDescriptor as? PropertyDescriptor)?.getter ?: candidateDescriptor).original,
-                inferredReturnType
-            )
+            val callElement = resolvedCall.call.callElement
+            val assertionInfo = RuntimeAssertionInfo(needNotNullAssertion = true, message = callElement.textForRuntimeAssertionInfo)
+            if (context.scope.kind == LexicalScopeKind.PROPERTY_DELEGATE_METHOD) {
+                context.trace.record(
+                    JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_DELEGATES,
+                    candidateDescriptor.original,
+                    assertionInfo
+                )
+            } else {
+                context.trace.record(
+                    JvmBindingContextSlices.RUNTIME_ASSERTION_INFO_ON_GENERIC_CALL,
+                    callElement,
+                    assertionInfo
+                )
+            }
         }
     }
 }
