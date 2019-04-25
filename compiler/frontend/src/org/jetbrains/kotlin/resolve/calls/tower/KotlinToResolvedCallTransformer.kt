@@ -760,3 +760,10 @@ fun ResolvedCall<*>.isNewNotCompleted(): Boolean {
     }
     return false
 }
+
+fun NewResolvedCallImpl<*>.hasInferredReturnType(): Boolean {
+    if (isNewNotCompleted()) return false
+
+    val returnType = this.resultingDescriptor.returnType ?: return false
+    return !returnType.contains { ErrorUtils.isUninferredParameter(it) }
+}
